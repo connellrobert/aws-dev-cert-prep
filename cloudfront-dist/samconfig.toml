@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "cloudfront-stack"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1ot87qyuaqh7w"
+s3_prefix = "cloudfront-stack"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "AppBucketName=\"sample-bucket-1111111111\""

@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: cloudfront cache policy template used for nesting the stack into another for cloudfront
+
+Resources: 
+  
+Outputs:
+  PolicyID:
+    Description: The information for the cachePolicy.
+    Value: !Ref Policy
