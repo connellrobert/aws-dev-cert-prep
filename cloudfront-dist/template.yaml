@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: cloudfront-dist
+Parameters:
+  AppBucketName:
+    Type: String
+    Description: "REQUIRED: Unique S3 bucket name to use for the app."
+Resources:
+  Policy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 432000
+        MinTTL: 432000
+        MaxTTL: 432000
+        Name: nestedCachePolicy
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: all
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: all
+
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+    # the bucket name is enough for the configuration, s3 will be hosting a static site, but cloudfront will take care
+    #   of the site configuration for us to host it.
+      BucketName: !Ref AppBucketName
+    DeletionPolicy: Delete
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultCacheBehavior:
+          CachePolicyId: !GetAtt Policy.Id
+          # use the s3 bucket containing the website for the caching configuration
+          TargetOriginId: '1234'
+          ViewerProtocolPolicy: allow-all
+        Origins:
+          - S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontAccessId}'
+            DomainName: !GetAtt AppBucket.DomainName
+            Id: '1234'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+  # An s3 bucket policy to attach to the created bucket
+  S3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref AppBucket
+        PolicyDocument: 
+          Statement:
+            - Action:
+                - s3:GetObject
+              Effect: Allow
+              Resource: 
+                - !Join ['',[!GetAtt AppBucket.Arn, '/*' ]]
+                - !GetAtt AppBucket.Arn
+              Principal: 
+                CanonicalUser: !GetAtt CloudFrontAccessId.S3CanonicalUserId
+
+  # A cloud front access identity to allow access to s3 from this identity only and otherwise restrict access
+  CloudFrontAccessId:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: An origin access id for cloudfront to access s3 resources
+
+Outputs:
+  CloudFrontUrl:
+    Description: the url for the cloudfront distribution
+    Value: !GetAtt Distribution.DomainName
